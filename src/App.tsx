@@ -2,12 +2,20 @@ import { FormEvent, useState } from "react";
 
 import { queryDocuments, uploadDocument, type QueryResult, type UploadResult } from "./api";
 
+const SUPPORTED_DOCUMENT_EXTENSIONS = [".pdf", ".txt"] as const;
+
 function formatScore(score: number | null): string {
   if (score === null) {
     return "Relevance score unavailable";
   }
 
   return `Relevance score ${score.toFixed(3)}`;
+}
+
+function isSupportedDocument(file: File): boolean {
+  const normalizedName = file.name.toLowerCase();
+
+  return SUPPORTED_DOCUMENT_EXTENSIONS.some((extension) => normalizedName.endsWith(extension));
 }
 
 export default function App() {
@@ -24,6 +32,11 @@ export default function App() {
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isUploading) {
+      return;
+    }
+
     setUploadError("");
     setUploadResult(null);
 
@@ -34,6 +47,11 @@ export default function App() {
 
     if (selectedFile.size === 0) {
       setUploadError("Empty files cannot be uploaded.");
+      return;
+    }
+
+    if (!isSupportedDocument(selectedFile)) {
+      setUploadError("Only PDF and TXT files are supported.");
       return;
     }
 
@@ -51,6 +69,11 @@ export default function App() {
 
   async function handleQuery(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isQuerying) {
+      return;
+    }
+
     setQueryError("");
     setQueryResult(null);
     setOpenSourceIndex(null);

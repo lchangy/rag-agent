@@ -30,8 +30,12 @@ async function parseJson(response: Response): Promise<JsonRecord> {
     return {};
   }
 
-  const body = (await response.json()) as unknown;
-  return isRecord(body) ? body : {};
+  try {
+    const body = (await response.json()) as unknown;
+    return isRecord(body) ? body : {};
+  } catch {
+    return {};
+  }
 }
 
 function isRecord(value: unknown): value is JsonRecord {
