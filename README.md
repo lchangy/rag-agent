@@ -12,6 +12,7 @@ Bootstrap for the RAG Agent backend using FastAPI, PostgreSQL 16 with `pgvector`
 - `app/`: FastAPI entry point and environment-backed settings
 - `api/routes/`: HTTP route modules
 - `core/`: SQLAlchemy metadata and database helpers
+- `scripts/`: internal maintenance commands such as batch embedding generation
 - `migrations/`: Alembic environment and migration scripts
 - `tests/`: pytest coverage for the bootstrap surface
 
@@ -31,7 +32,7 @@ Supported variables:
 - `DATABASE_USER`: PostgreSQL username, default `postgres`
 - `DATABASE_PASSWORD`: PostgreSQL password, default `postgres`
 - `DATABASE_NAME`: PostgreSQL database name, default `rag_agent`
-- `OPENAI_API_KEY`: reserved for future embedding/chat integrations
+- `OPENAI_API_KEY`: required for live runs of `python -m scripts.embed_chunks`
 
 ## Local Python Workflow
 
@@ -43,6 +44,14 @@ python -m pytest
 python -c "from app.main import app"
 alembic upgrade head
 ```
+
+Generate embeddings for chunks that do not yet have rows in `embeddings` with:
+
+```bash
+python -m scripts.embed_chunks --batch-size 100
+```
+
+The batch command is idempotent: it only selects chunks missing embeddings, stores vectors as `vector(1536)`, and logs progress as `Embedded X/Y chunks`.
 
 ## Docker Workflow
 

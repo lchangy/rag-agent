@@ -52,3 +52,41 @@
 - API proof: `curl http://localhost:8000/health`
 - Migration proof: `alembic upgrade head`
 - Extension proof: `docker compose exec db psql -U postgres -d rag_agent -c "\dx"`
+
+## Scope v2: Embedding Generation and Vector Storage
+
+- Generate OpenAI embeddings for existing chunk rows with an internal batch script.
+- Store one `text-embedding-3-small` vector per chunk in PostgreSQL `pgvector`.
+- Make the script idempotent so reruns only fill missing embeddings.
+- Add unit coverage for dimensions, retry behavior, and rerun safety.
+
+## Not Doing v2
+
+- No retrieval endpoint or similarity search API yet.
+- No background queue or scheduler; execution remains script-driven.
+- No document ingestion UX or upload pipeline in this ticket.
+
+## Key Flows v2
+
+1. A developer or internal worker runs `python -m scripts.embed_chunks --batch-size 100`.
+2. The batch process selects chunks that do not yet have embeddings.
+3. OpenAI returns `text-embedding-3-small` vectors in batches.
+4. The process stores each vector in PostgreSQL and logs incremental progress.
+5. Re-running the script skips already-embedded chunks.
+
+## Data and Boundaries v2
+
+- PostgreSQL owns durable chunk and embedding storage.
+- The embedding processor owns batching, dimension checks, and retry behavior.
+- OpenAI is the only external dependency for live vector generation.
+
+## Risks v2
+
+- Live end-to-end validation depends on an available `OPENAI_API_KEY`.
+- The repository does not yet contain the richer RAG-2 chunk schema, so this ticket must define the minimum chunk table shape needed for embeddings.
+
+## Validation Notes v2
+
+- Processor proof: `pytest tests/test_embed_chunks.py -v`
+- Full regression proof: `pytest -q`
+- CLI proof: `python -m scripts.embed_chunks --batch-size 100`
