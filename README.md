@@ -12,8 +12,22 @@ Bootstrap for the RAG Agent backend using FastAPI, PostgreSQL 16 with `pgvector`
 - `app/`: FastAPI entry point and environment-backed settings
 - `api/routes/`: HTTP route modules
 - `core/`: SQLAlchemy metadata and database helpers
+- `services/`: document loaders and token chunking helpers
 - `migrations/`: Alembic environment and migration scripts
 - `tests/`: pytest coverage for the bootstrap surface
+
+## API Surface
+
+- `GET /health`: liveness endpoint returning `{"status": "ok"}`
+- `POST /documents`: multipart upload endpoint accepting `.txt` and `.pdf` files under the `file` field
+- `GET /documents/{id}`: returns stored document metadata and chunk content
+
+Document upload behavior:
+
+- Maximum file size: `50MB`
+- Supported formats: `.txt`, `.pdf`
+- Chunking: `512` tokens per chunk with `50` tokens of overlap
+- Stored chunk metadata: `chunk_index`, `start_char`, `end_char`, `token_count`
 
 ## Environment Variables
 
@@ -44,6 +58,23 @@ python -c "from app.main import app"
 alembic upgrade head
 ```
 
+To exercise the document API locally without starting Docker:
+
+```bash
+python - <<'PY'
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+client = TestClient(app)
+response = client.post(
+    "/documents",
+    files={"file": ("sample.txt", b"hello world " * 200, "text/plain")},
+)
+print(response.status_code, response.json())
+PY
+```
+
 ## Docker Workflow
 
 Start the API and database stack:
@@ -58,6 +89,12 @@ Expected health response:
 
 ```json
 {"status": "ok"}
+```
+
+Example upload response:
+
+```json
+{"document_id":"<uuid>","filename":"sample.txt","chunks_created":1}
 ```
 
 To rerun migrations inside the API container:
