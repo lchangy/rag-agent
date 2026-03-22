@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 from core.embeddings import ChunkRecord, EmbeddingBatchProcessor
+from scripts import embed_chunks
 
 
 class FakeRepository:
@@ -109,3 +110,51 @@ def test_embedding_processor_retries_after_rate_limit() -> None:
     assert len(repository.embeddings) == 1
     assert client.calls == 2
     assert cast(list[float], sleeps) == [0.25]
+
+
+def test_embed_chunks_main_raises_clear_error_for_invalid_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    AuthenticationError = type("AuthenticationError", (Exception,), {})
+
+    class FakeProcessor:
+        def run(self, batch_size: int) -> int:
+            raise AuthenticationError("invalid key")
+
+    monkeypatch.setattr(embed_chunks, "parse_args", lambda: type("Args", (), {
+        "batch_size": 2,
+        "max_retries": 5,
+        "base_delay_seconds": 1.0,
+    })())
+    monkeypatch.setattr(embed_chunks, "get_settings", lambda: type("Settings", (), {"openai_api_key": "sk-test"})())
+    monkeypatch.setattr(embed_chunks, "EmbeddingBatchProcessor", lambda **kwargs: FakeProcessor())
+    monkeypatch.setattr(embed_chunks, "PostgresChunkEmbeddingRepository", lambda session_factory: object())
+    monkeypatch.setattr(embed_chunks, "get_session_factory", lambda: object())
+    monkeypatch.setattr(embed_chunks, "OpenAIEmbeddingClient", lambda api_key: object())
+
+    with pytest.raises(RuntimeError, match="OPENAI_API_KEY is invalid"):
+        embed_chunks.main()
+
+
+def test_embed_chunks_main_raises_clear_error_for_openai_connectivity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    APIConnectionError = type("APIConnectionError", (Exception,), {})
+
+    class FakeProcessor:
+        def run(self, batch_size: int) -> int:
+            raise APIConnectionError("network down")
+
+    monkeypatch.setattr(embed_chunks, "parse_args", lambda: type("Args", (), {
+        "batch_size": 2,
+        "max_retries": 5,
+        "base_delay_seconds": 1.0,
+    })())
+    monkeypatch.setattr(embed_chunks, "get_settings", lambda: type("Settings", (), {"openai_api_key": "sk-test"})())
+    monkeypatch.setattr(embed_chunks, "EmbeddingBatchProcessor", lambda **kwargs: FakeProcessor())
+    monkeypatch.setattr(embed_chunks, "PostgresChunkEmbeddingRepository", lambda session_factory: object())
+    monkeypatch.setattr(embed_chunks, "get_session_factory", lambda: object())
+    monkeypatch.setattr(embed_chunks, "OpenAIEmbeddingClient", lambda api_key: object())
+
+    with pytest.raises(RuntimeError, match="OpenAI API connection failed"):
+        embed_chunks.main()

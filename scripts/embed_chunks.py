@@ -25,6 +25,19 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _format_runtime_error(exc: Exception) -> RuntimeError:
+    error_name = exc.__class__.__name__
+    if error_name == "AuthenticationError":
+        return RuntimeError(
+            "OPENAI_API_KEY is invalid. Update the environment with a valid OpenAI Platform API key."
+        )
+    if error_name in {"APIConnectionError", "APITimeoutError"}:
+        return RuntimeError(
+            "OpenAI API connection failed. Check outbound network access and retry with a valid key."
+        )
+    return RuntimeError(str(exc))
+
+
 def main() -> int:
     args = parse_args()
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -39,7 +52,10 @@ def main() -> int:
         max_retries=args.max_retries,
         base_delay_seconds=args.base_delay_seconds,
     )
-    processor.run(batch_size=args.batch_size)
+    try:
+        processor.run(batch_size=args.batch_size)
+    except Exception as exc:  # noqa: BLE001
+        raise _format_runtime_error(exc) from exc
     return 0
 
 
