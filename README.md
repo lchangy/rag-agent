@@ -2,18 +2,23 @@
 
 Bootstrap for the RAG Agent backend using FastAPI, PostgreSQL 16 with `pgvector`, Docker Compose, and Alembic.
 
+The repository now also includes a React + Vite frontend for document upload and question answering against the local API.
+
 ## Prerequisites
 
 - Python 3.11 for local development
 - Docker and Docker Compose
+- Node.js 22 and npm 10 for the frontend
 
 ## Project Layout
 
 - `app/`: FastAPI entry point and environment-backed settings
 - `api/routes/`: HTTP route modules
 - `core/`: SQLAlchemy metadata and database helpers
+- `src/`: React frontend entry point, API client, and page UI
 - `migrations/`: Alembic environment and migration scripts
 - `tests/`: pytest coverage for the bootstrap surface
+- `tests-ui/`: Vitest coverage for the frontend upload and Q&A flows
 
 ## Environment Variables
 
@@ -43,6 +48,35 @@ python -m pytest
 python -c "from app.main import app"
 alembic upgrade head
 ```
+
+## Frontend Workflow
+
+Install the frontend dependencies and run the UI locally:
+
+```bash
+npm install
+npm run dev
+```
+
+The Vite app defaults to calling the backend at `http://localhost:8000`. Override that base URL when needed with:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8000 npm run dev
+```
+
+Run the frontend checks with:
+
+```bash
+npm run test -- --run
+npm run build
+```
+
+The page provides:
+
+- document upload for `.pdf` and `.txt`
+- success and error banners for uploads
+- question submission with a loading state
+- answer rendering with expandable source previews and relevance scores
 
 ## Docker Workflow
 
