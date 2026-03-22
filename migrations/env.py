@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.config import get_settings
 from core.db import Base, get_database_url
+import core.models  # noqa: F401
 
 config = context.config
 
